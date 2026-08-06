@@ -67,10 +67,10 @@
 </div>
 
 <script>
-  // رابط Google Apps Script Web App الخاص بك
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyENwzbvgd20QbP0fj1710KCulsylZ3s9sQTHSTJCzh44qB7pVoanDWepkDGKwEE2_S/exec";
+  // رابط Google Apps Script Web App الجديد للإدارة الثانية
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwmYtio0-aXoy7rbwRLHkjeciMN92lLX8VWHVRbToOwh2UVUzFk9jdmbD67Nz4lTUnY/exec";
 
-  // 🎯 دالة لتنظيف الـ ID وإزالة 10 في البداية تلقائياً
+  // دالة تنظيف الـ ID لتتجاهل 10 في البداية تلقائياً
   function cleanIdInput(rawId) {
     let idStr = String(rawId).trim();
     if (idStr.length === 5 && idStr.startsWith("10")) {
@@ -89,7 +89,6 @@
     status.style.color = "#1a73e8";
     status.innerText = "⏳ جاري إرسال الطلب وتنبيه المدير...";
 
-    // تنظيف الـ ID قبل الإرسال
     const rawId = document.getElementById('id').value;
     const cleanedId = cleanIdInput(rawId);
 
@@ -132,7 +131,6 @@
       return;
     }
 
-    // تنظيف الـ ID قبل البحث
     const cleanedId = cleanIdInput(rawId);
 
     btn.disabled = true;
