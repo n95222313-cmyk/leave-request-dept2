@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>نظام طلبات ومتابعة الإجازات</title>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; padding: 20px; direction: rtl; }
+    .form-container { background: white; max-width: 500px; margin: 20px auto; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+    h2, h3 { text-align: center; color: #1a73e8; margin-bottom: 20px; }
+    label { display: block; margin-top: 15px; font-weight: bold; color: #333; }
+    input, select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ced4da; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
+    input:focus, select:focus { outline: none; border-color: #1a73e8; }
+    button { width: 100%; background-color: #1a73e8; color: white; border: none; padding: 12px; margin-top: 20px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+    button:hover { background-color: #1557b0; }
+    button:disabled { background-color: #6c757d; cursor: not-allowed; }
+    .btn-search { background-color: #28a745; }
+    .btn-search:hover { background-color: #218838; }
+    #status, #queryResult { margin-top: 15px; text-align: center; font-weight: bold; font-size: 15px; }
+    .result-card { background: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; border-radius: 8px; margin-top: 15px; text-align: right; }
+    .badge-pending { color: #856404; background: #fff3cd; padding: 3px 8px; border-radius: 4px; font-weight: bold; }
+    .badge-approved { color: #155724; background: #d4edda; padding: 3px 8px; border-radius: 4px; font-weight: bold; }
+    .badge-rejected { color: #721c24; background: #f8d7da; padding: 3px 8px; border-radius: 4px; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+<!-- 1. نموذج تقديم الطلب -->
+<div class="form-container">
+  <h2>تقديم طلب إجازة جديد</h2>
+  <form id="leaveForm">
+    <label for="name">اسم الموظف الثلاثي:</label>
+    <input type="text" id="name" required placeholder="مثال: محمد عبد النعيم">
+
+    <label for="id">ID الموظف:</label>
+    <input type="text" id="id" required placeholder="مثال: 123 أو 10123">
+
+    <label for="phone">رقم التليفون (الواتساب):</label>
+    <input type="tel" id="phone" required placeholder="01xxxxxxxxx">
+
+    <label for="leaveType">نوع الإجازة:</label>
+    <select id="leaveType">
+      <option value="اعتيادية">اعتيادية</option>
+      <option value="عارضة">عارضة</option>
+      <option value="مرضية">مرضية</option>
+    </select>
+
+    <label for="startDate">تاريخ بداية الإجازة:</label>
+    <input type="date" id="startDate" required>
+
+    <label for="endDate">تاريخ نهاية الإجازة:</label>
+    <input type="date" id="endDate" required>
+
+    <button type="submit" id="submitBtn">إرسال الطلب للمدير</button>
+  </form>
+  <div id="status"></div>
+</div>
+
+<!-- 2. قسم متابعة الطلب والاستعلام -->
+<div class="form-container" style="margin-top: 30px;">
+  <h3>🔍 متابعة حالة الطلب والرصيد</h3>
+  <label for="searchId">ادخل ID الموظف للاستعلام:</label>
+  <input type="text" id="searchId" placeholder="مثال: 123 أو 10123">
+  <button type="button" class="btn-search" id="searchBtn" onclick="checkStatus()">استعلام عن الطلب والرصيد</button>
+
+  <div id="queryResult"></div>
+</div>
+
+<script>
+  // رابط Google Apps Script Web App الخاص بك
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyENwzbvgd20QbP0fj1710KCulsylZ3s9sQTHSTJCzh44qB7pVoanDWepkDGKwEE2_S/exec";
+
+  // 🎯 دالة لتنظيف الـ ID وإزالة 10 في البداية تلقائياً
+  function cleanIdInput(rawId) {
+    let idStr = String(rawId).trim();
+    if (idStr.length === 5 && idStr.startsWith("10")) {
+      idStr = idStr.substring(2);
+    }
+    return idStr;
+  }
+
+  // إرسال الطلب
+  document.getElementById('leaveForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('submitBtn');
+    const status = document.getElementById('status');
+
+    btn.disabled = true;
+    status.style.color = "#1a73e8";
+    status.innerText = "⏳ جاري إرسال الطلب وتنبيه المدير...";
+
+    // تنظيف الـ ID قبل الإرسال
+    const rawId = document.getElementById('id').value;
+    const cleanedId = cleanIdInput(rawId);
+
+    const payload = {
+      name: document.getElementById('name').value,
+      id: cleanedId,
+      phone: document.getElementById('phone').value,
+      leaveType: document.getElementById('leaveType').value,
+      startDate: document.getElementById('startDate').value,
+      endDate: document.getElementById('endDate').value
+    };
+
+    fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    .then(() => {
+      status.style.color = "#28a745";
+      status.innerText = "✔ تم إرسال الطلب بنجاح! ووصل إشعار للمدير على الإيميل.";
+      document.getElementById('leaveForm').reset();
+      btn.disabled = false;
+    })
+    .catch(error => {
+      status.style.color = "#dc3545";
+      status.innerText = "✖ حدث خطأ أثناء الإرسال، يرجى المحاولة لاحقاً.";
+      btn.disabled = false;
+    });
+  });
+
+  // متابعة حالة الطلب والرصيد
+  function checkStatus() {
+    const rawId = document.getElementById('searchId').value.trim();
+    const resDiv = document.getElementById('queryResult');
+    const btn = document.getElementById('searchBtn');
+
+    if (!rawId) {
+      resDiv.innerHTML = "<span style='color:red;'>يرجى إدخال ID الموظف أولاً</span>";
+      return;
+    }
+
+    // تنظيف الـ ID قبل البحث
+    const cleanedId = cleanIdInput(rawId);
+
+    btn.disabled = true;
+    resDiv.innerHTML = "⏳ جاري البحث عن البيانات...";
+
+    fetch(`${SCRIPT_URL}?action=checkStatus&id=${encodeURIComponent(cleanedId)}`)
+      .then(response => response.json())
+      .then(data => {
+        btn.disabled = false;
+        if (!data.found) {
+          resDiv.innerHTML = "<span style='color:red;'>لم يتم العثور على موظف بهذا الرقم.</span>";
+          return;
+        }
+
+        let badgeClass = "badge-pending";
+        if (data.status === "موافق") badgeClass = "badge-approved";
+        if (data.status === "غير موافق" || data.status === "مرفوض") badgeClass = "badge-rejected";
+
+        resDiv.innerHTML = `
+          <div class="result-card">
+            <p><b>اسم الموظف:</b> ${data.name}</p>
+            <p><b>حالة أحدث طلب:</b> <span class="${badgeClass}">${data.status}</span></p>
+            <p><b>رصيد الإجازات المتبقي:</b> <span style="font-size: 18px; color: #1a73e8; font-weight: bold;">${data.remainingBalance} يوم</span></p>
+          </div>
+        `;
+      })
+      .catch(err => {
+        btn.disabled = false;
+        resDiv.innerHTML = "<span style='color:red;'>حدث خطأ أثناء جلب البيانات.</span>";
+      });
+  }
+</script>
+
+</body>
+</html>
